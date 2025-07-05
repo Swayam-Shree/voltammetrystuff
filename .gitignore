@@ -1,0 +1,7 @@
+.vscode
+webServer/node_modules
+webServer/package-lock.json
+
+webServer/public/dist
+webServer/public/node_modules
+webServer/public/package-lock.json
