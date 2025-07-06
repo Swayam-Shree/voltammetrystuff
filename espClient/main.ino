@@ -15,9 +15,10 @@
 //#define USE_TTGO_T7
 //#define USE_TTGO_T_OI
 
-const char* ssid = "swayam";
-const char* password = "87655678";
-const char* websocket_host = "192.168.159.122";
+const char* ssid = "DESKTOP-DJDFG85 1309";
+const char* password = "R{n76955}";
+
+const char* websocket_host = "wss://renalhealthmonitor.onrender.com";
 const uint16_t websocket_port = 6969;
 
 WebSocketsClient webSocket;
@@ -26,12 +27,15 @@ bool connectedToServer = false;
 StaticJsonDocument<512> voltammetryDoc;
 StaticJsonDocument<256> messageDoc;
 
-String serializeVoltammetryResults(double peakVoltage, double peakCurrent, const String& analyteName) {
+const float C = 10;
+const float M = 2;
+
+String serializeVoltammetryResults(double conc, double peakCurrent, const String& analyteName) {
     voltammetryDoc.clear();
     
     voltammetryDoc["type"] = "voltammetryResult";
     voltammetryDoc["analyte"] = analyteName;
-    voltammetryDoc["peakVoltage"] = peakVoltage;
+    voltammetryDoc["concentration"] = conc;
     voltammetryDoc["peakCurrent"] = peakCurrent;
     
     String output;
@@ -545,7 +549,9 @@ void loop() {
         analyteName = "Unknown";
       }
       
-      sendVoltametryOverSocket(globalMax.first, globalMax.second, analyteName);
+      float conc = (globalMax.second - C)/M;
+
+      sendVoltametryOverSocket(conc, globalMax.second, analyteName);
       
       // Show results
       tft.fillScreen(TFT_BLACK);
