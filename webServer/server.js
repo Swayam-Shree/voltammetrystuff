@@ -38,25 +38,6 @@ wss.on('connection', (socket) => {
                     case "browserInit":
                         browserSocket = socket;
                         console.log("Browser connected");
-
-                        browserSocket.send(JSON.stringify({
-                            type: "voltammetryResult",
-                            peakCurrent: 0,
-                            peakVoltage: 0,
-                            analyte: "Uric Acid"
-                        }))
-                        browserSocket.send(JSON.stringify({
-                            type: "voltammetryResult",
-                            peakCurrent: 0,
-                            peakVoltage: 0,
-                            analyte: "Urea"
-                        }))
-                        browserSocket.send(JSON.stringify({
-                            type: "voltammetryResult",
-                            peakCurrent: 0,
-                            peakVoltage: 0,
-                            analyte: "Creatinine"
-                        }))
                         break;
                 }
                 break;
@@ -65,7 +46,6 @@ wss.on('connection', (socket) => {
                 if (browserSocket) {
                     browserSocket.send(JSON.stringify(message));
                 }
-                console.log(message);
                 break;
             case "processingState":
                 if (browserSocket) {

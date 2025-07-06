@@ -52,12 +52,18 @@ export default function App() {
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
-                                                    <p className="text-sm font-medium text-muted-foreground">Max Voltage</p>
-                                                    <p className="text-xl font-bold">{result.peakVoltage?.toFixed(3)} V</p>
+                                                    <p className="text-sm font-medium text-muted-foreground">Concentration</p>
+                                                    {
+                                                        result.analyte === "Urea" ? (
+                                                            <p className="text-xl font-bold">{result.concentration?.toFixed(3)} mM</p>
+                                                        ) : (
+                                                            <p className="text-xl font-bold">{result.concentration?.toFixed(3)} µM</p>
+                                                        )
+                                                    }
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-medium text-muted-foreground">Max Current</p>
-                                                    <p className="text-xl font-bold">{result.peakCurrent?.toFixed(3)} A</p>
+                                                    <p className="text-xl font-bold">{result.peakCurrent?.toFixed(3)} µA</p>
                                                 </div>
                                             </div>
                                         </div>

@@ -4,7 +4,7 @@ import App from './App.jsx'
 import { ThemeProvider } from './components/custom/ThemeProvider.jsx'
 import './index.css'
 
-export const socket = new WebSocket('ws://localhost:6969');
+export const socket = new WebSocket('wws://renalhealthmonitor.onrender.com');
 
 export const VoltammetryContext = createContext();
 
