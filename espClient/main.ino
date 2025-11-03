@@ -18,7 +18,7 @@
 const char* ssid = "swayam";
 const char* password = "87655678";
 
-const char* websocket_host = "wss://renalhealthmonitor.onrender.com";
+const char* websocket_host = "renalhealthmonitor.onrender.com";
 const uint16_t websocket_port = 443;
 
 WebSocketsClient webSocket;
