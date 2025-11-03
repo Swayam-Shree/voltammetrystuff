@@ -15,11 +15,11 @@
 //#define USE_TTGO_T7
 //#define USE_TTGO_T_OI
 
-const char* ssid = "DESKTOP-DJDFG85 1309";
-const char* password = "R{n76955}";
+const char* ssid = "swayam";
+const char* password = "87655678";
 
 const char* websocket_host = "wss://renalhealthmonitor.onrender.com";
-const uint16_t websocket_port = 6969;
+const uint16_t websocket_port = 443;
 
 WebSocketsClient webSocket;
 bool connectedToServer = false;
@@ -47,7 +47,7 @@ String serializeMessage(const String& type, const String& message) {
     messageDoc.clear();
     
     messageDoc["type"] = type;
-    messageDoc["message"] = message;
+    messageDoc["data"] = message;
     
     String output;
     serializeJson(messageDoc, output);
@@ -186,6 +186,9 @@ bool stopRequested = false;
 unsigned long lastButtonPress = 0;
 const unsigned long debounceDelay = 500;
 
+// Timer for COMPLETED state
+unsigned long completionTime = 0;
+
 void setup() {
   tft.init();
   tft.setRotation(1);
@@ -236,7 +239,7 @@ void setup() {
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 
-  webSocket.begin(websocket_host, websocket_port);
+  webSocket.beginSSL(websocket_host, websocket_port);
   webSocket.onEvent(webSocketEvent);
   
   // Display initial idle state
@@ -392,7 +395,7 @@ void findLocalMinima(const std::vector<std::pair<double, double>>& coordinates, 
     double slope1 = (y_curr - y_prev) / (x_curr - x_prev);
     double slope2 = (y_next - y_curr) / (x_next - x_curr);
 
-    if (slope1 >= 0 && slope2 <= 0) {
+    if (slope1 <= 0 && slope2 >= 0) {
       minima.push_back({ x_curr, y_curr });
     }
   }
@@ -605,12 +608,17 @@ void loop() {
         tft.print("Press START for new");
         tft.setCursor(30, 190);
         tft.print("measurement");
-        
-        // Reset to idle after showing completion
-        delay(3000);
-        currentState = IDLE;
-        displayIdleScreen();
+  
+        completionTime = millis();
       }
+    }
+  }
+
+  if (currentState == COMPLETED) {
+    // Check if 3 seconds (3000 ms) have passed
+    if (millis() - completionTime > 3000) {
+      currentState = IDLE;
+      displayIdleScreen();
     }
   }
 }
