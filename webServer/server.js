@@ -12,6 +12,8 @@ app.use(express.static(path.join(__dirname, 'public/dist')));
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
+const PORT = process.env.PORT || 6969;
+
 let espSocket = null;
 let browserSocket = null;
 
@@ -57,6 +59,6 @@ wss.on('connection', (socket) => {
     socket.on('close', () => console.log('Client disconnected'));
 });
 
-server.listen(6969, () => {
-    console.log('Server running on http://localhost:6969');
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
 });
