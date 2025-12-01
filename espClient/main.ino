@@ -18,7 +18,7 @@
 const char* ssid = "swayam";
 const char* password = "87655678";
 
-const char* websocket_host = "wss://renalhealthmonitor.onrender.com";
+const char* websocket_host = "renalhealthmonitor.onrender.com";
 const uint16_t websocket_port = 443;
 
 WebSocketsClient webSocket;
@@ -27,8 +27,18 @@ bool connectedToServer = false;
 StaticJsonDocument<512> voltammetryDoc;
 StaticJsonDocument<256> messageDoc;
 
-const float C = 10;
-const float M = 2;
+// Calibration constants for each analyte
+// Urea calibration
+const float C_UREA = 10;
+const float M_UREA = 2;
+
+// Uric Acid calibration
+const float C_URIC_ACID = 8;
+const float M_URIC_ACID = 1.5;
+
+// Creatinine calibration
+const float C_CREATININE = 12;
+const float M_CREATININE = 2.5;
 
 String serializeVoltammetryResults(double conc, double peakCurrent, const String& analyteName) {
     voltammetryDoc.clear();
@@ -437,6 +447,27 @@ void switchElectrode(int cycleNum) {
   }
 }
 
+// Function to calculate concentration based on analyte type
+float calculateConcentration(double peakCurrent, int cycleNum) {
+  float conc;
+  
+  if (cycleNum == 1) {
+    // Urea
+    conc = (peakCurrent - C_UREA) / M_UREA;
+  } else if (cycleNum == 2) {
+    // Uric Acid
+    conc = (peakCurrent - C_URIC_ACID) / M_URIC_ACID;
+  } else if (cycleNum == 3) {
+    // Creatinine
+    conc = (peakCurrent - C_CREATININE) / M_CREATININE;
+  } else {
+    // Default fallback (shouldn't reach here)
+    conc = 0;
+  }
+  
+  return conc;
+}
+
 void handleButtons() {
   unsigned long currentTime = millis();
   
@@ -552,7 +583,8 @@ void loop() {
         analyteName = "Unknown";
       }
       
-      float conc = (globalMax.second - C)/M;
+      // Calculate concentration using analyte-specific calibration
+      float conc = calculateConcentration(globalMax.second, cycle);
 
       sendVoltametryOverSocket(conc, globalMax.second, analyteName);
       
