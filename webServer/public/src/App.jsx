@@ -9,52 +9,20 @@ import {
     CardTitle,
 } from "./components/ui/card"
 import { Badge } from "./components/ui/badge"
+import { Moon, Sun } from "lucide-react"
+import { useTheme } from "./components/custom/ThemeProvider"
 
-function DeviceList({ devices, onSelectDevice }) {
+function SimpleThemeToggle() {
+    const { setTheme, theme } = useTheme()
+
     return (
-        <div className="p-6 max-w-4xl mx-auto space-y-6">
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight">Renal Health Monitor</h1>
-                <p className="text-muted-foreground">Select a device to view its readings</p>
-            </div>
-
-            {devices.length === 0 ? (
-                <Card>
-                    <CardContent className="py-12">
-                        <div className="text-center space-y-2">
-                            <div className="text-4xl">📡</div>
-                            <p className="text-muted-foreground">No devices found</p>
-                            <p className="text-sm text-muted-foreground">
-                                Connect an ESP32 device to start collecting data
-                            </p>
-                        </div>
-                    </CardContent>
-                </Card>
-            ) : (
-                <div className="grid gap-4">
-                    {devices.map((device) => (
-                        <Card
-                            key={device.id}
-                            className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50 hover:scale-[1.01]"
-                            onClick={() => onSelectDevice(device.id)}
-                        >
-                            <CardHeader>
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-lg">{device.id}</CardTitle>
-                                    <StatusBadge status={device.status} />
-                                </div>
-                                <CardDescription>
-                                    {device.lastSeen
-                                        ? `Last seen: ${new Date(device.lastSeen.seconds * 1000).toLocaleString()}`
-                                        : 'Never connected'
-                                    }
-                                </CardDescription>
-                            </CardHeader>
-                        </Card>
-                    ))}
-                </div>
-            )}
-        </div>
+        <button
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-10 w-10 cursor-pointer"
+            title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+        >
+            {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+        </button>
     )
 }
 
@@ -109,6 +77,57 @@ function ReadingCard({ reading, isLatest }) {
                     </div>
                 </div>
             </div>
+        </div>
+    )
+}
+
+function DeviceList({ devices, onSelectDevice }) {
+    return (
+        <div className="p-6 max-w-4xl mx-auto space-y-6">
+            <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                    <h1 className="text-3xl font-bold tracking-tight">Renal Health Monitor</h1>
+                    <p className="text-muted-foreground">Select a device to view its readings</p>
+                </div>
+                <SimpleThemeToggle />
+            </div>
+
+            {devices.length === 0 ? (
+                <Card>
+                    <CardContent className="py-12">
+                        <div className="text-center space-y-2">
+                            <div className="text-4xl">📡</div>
+                            <p className="text-muted-foreground">No devices found</p>
+                            <p className="text-sm text-muted-foreground">
+                                Connect an ESP32 device to start collecting data
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+            ) : (
+                <div className="grid gap-4">
+                    {devices.map((device) => (
+                        <Card
+                            key={device.id}
+                            className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/50 hover:scale-[1.01]"
+                            onClick={() => onSelectDevice(device.id)}
+                        >
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-lg">{device.id}</CardTitle>
+                                    <StatusBadge status={device.status} />
+                                </div>
+                                <CardDescription>
+                                    {device.lastSeen
+                                        ? `Last seen: ${new Date(device.lastSeen.seconds * 1000).toLocaleString()}`
+                                        : 'Never connected'
+                                    }
+                                </CardDescription>
+                            </CardHeader>
+                        </Card>
+                    ))}
+                </div>
+            )}
         </div>
     )
 }
@@ -170,6 +189,7 @@ function DeviceDetail({ deviceId, onBack }) {
                         </p>
                     )}
                 </div>
+                <SimpleThemeToggle />
             </div>
 
             {/* Latest Results */}
