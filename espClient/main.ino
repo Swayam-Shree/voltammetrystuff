@@ -27,8 +27,18 @@ bool connectedToServer = false;
 StaticJsonDocument<512> voltammetryDoc;
 StaticJsonDocument<256> messageDoc;
 
-const float C = 10;
-const float M = 2;
+// Calibration constants for each analyte
+// Urea calibration
+const float C_UREA = 10;
+const float M_UREA = 2;
+
+// Uric Acid calibration
+const float C_URIC_ACID = 8;
+const float M_URIC_ACID = 1.5;
+
+// Creatinine calibration
+const float C_CREATININE = 12;
+const float M_CREATININE = 2.5;
 
 String serializeVoltammetryResults(double concentration, double peakCurrent, const String& analyteName) {
     voltammetryDoc.clear();
@@ -445,6 +455,27 @@ void switchElectrode(int cycleNum) {
   }
 }
 
+// Function to calculate concentration based on analyte type
+float calculateConcentration(double peakCurrent, int cycleNum) {
+  float conc;
+  
+  if (cycleNum == 1) {
+    // Urea
+    conc = (peakCurrent - C_UREA) / M_UREA;
+  } else if (cycleNum == 2) {
+    // Uric Acid
+    conc = (peakCurrent - C_URIC_ACID) / M_URIC_ACID;
+  } else if (cycleNum == 3) {
+    // Creatinine
+    conc = (peakCurrent - C_CREATININE) / M_CREATININE;
+  } else {
+    // Default fallback (shouldn't reach here)
+    conc = 0;
+  }
+  
+  return conc;
+}
+
 void handleButtons() {
   unsigned long currentTime = millis();
   
@@ -559,25 +590,26 @@ void loop() {
       
       if (!maxima.empty()) {
         std::pair<double, double> globalMax = findGlobalMaximum(maxima);
-        float conc = (globalMax.second - C)/M;
+        // Calculate concentration using analyte-specific calibration
+        float conc = calculateConcentration(globalMax.second, cycle);
         sendVoltammetryOverSocket(conc, globalMax.second, analyteName);
+      
+        // Show results
+        tft.fillScreen(TFT_BLACK);
+        tft.setTextSize(2);
+        tft.setTextColor(TFT_GREEN, TFT_BLACK);
+        tft.setCursor(5, 50);
+        tft.print("LSV Completed, electrode =" + String(cycle));
+      
+        tft.fillScreen(TFT_BLACK);
+        tft.setCursor(5, 50);
+        tft.print(" Max Current : ");
+        tft.print(globalMax.second);
+        tft.print(" at ");
+        tft.print(globalMax.first);
       } else {
         Serial.println("Warning: No peaks found for " + analyteName);
       }
-      
-      // Show results
-      tft.fillScreen(TFT_BLACK);
-      tft.setTextSize(2);
-      tft.setTextColor(TFT_GREEN, TFT_BLACK);
-      tft.setCursor(5, 50);
-      tft.print("LSV Completed, electrode =" + String(cycle));
-      
-      tft.fillScreen(TFT_BLACK);
-      tft.setCursor(5, 50);
-      tft.print(" Max Current : ");
-      tft.print(globalMax.second);
-      tft.print(" at ");
-      tft.print(globalMax.first);
       
       // Clean up
       plotDataFor.clear();
