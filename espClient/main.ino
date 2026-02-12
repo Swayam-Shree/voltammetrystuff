@@ -30,12 +30,12 @@ StaticJsonDocument<256> messageDoc;
 const float C = 10;
 const float M = 2;
 
-String serializeVoltammetryResults(double conc, double peakCurrent, const String& analyteName) {
+String serializeVoltammetryResults(double concentration, double peakCurrent, const String& analyteName) {
     voltammetryDoc.clear();
     
     voltammetryDoc["type"] = "voltammetryResult";
     voltammetryDoc["analyte"] = analyteName;
-    voltammetryDoc["concentration"] = conc;
+    voltammetryDoc["concentration"] = concentration;
     voltammetryDoc["peakCurrent"] = peakCurrent;
     
     String output;
@@ -59,8 +59,8 @@ void sendMessageOverSocket(const String& type, const String& message) {
     webSocket.sendTXT(jsonMessage);
 }
 
-void sendVoltametryOverSocket(double peakVoltage, double peakCurrent, const String& analyteName) {
-    String jsonMessage = serializeVoltammetryResults(peakVoltage, peakCurrent, analyteName);
+void sendVoltammetryOverSocket(double concentration, double peakCurrent, const String& analyteName) {
+    String jsonMessage = serializeVoltammetryResults(concentration, peakCurrent, analyteName);
     webSocket.sendTXT(jsonMessage);
 }
 
@@ -376,8 +376,12 @@ void findLocalMaxima(const std::vector<std::pair<double, double>>& coordinates, 
     double x_curr = coordinates[i].first, y_curr = coordinates[i].second;
     double x_next = coordinates[i + 1].first, y_next = coordinates[i + 1].second;
 
-    double slope1 = (y_curr - y_prev) / (x_curr - x_prev);
-    double slope2 = (y_next - y_curr) / (x_next - x_curr);
+    double dx1 = x_curr - x_prev;
+    double dx2 = x_next - x_curr;
+    if (dx1 == 0 || dx2 == 0) continue; // skip to avoid division by zero
+
+    double slope1 = (y_curr - y_prev) / dx1;
+    double slope2 = (y_next - y_curr) / dx2;
 
     if (slope1 >= 0 && slope2 <= 0) {
       maxima.push_back({ x_curr, y_curr });
@@ -392,8 +396,12 @@ void findLocalMinima(const std::vector<std::pair<double, double>>& coordinates, 
     double x_curr = coordinates[i].first, y_curr = coordinates[i].second;
     double x_next = coordinates[i + 1].first, y_next = coordinates[i + 1].second;
 
-    double slope1 = (y_curr - y_prev) / (x_curr - x_prev);
-    double slope2 = (y_next - y_curr) / (x_next - x_curr);
+    double dx1 = x_curr - x_prev;
+    double dx2 = x_next - x_curr;
+    if (dx1 == 0 || dx2 == 0) continue; // skip to avoid division by zero
+
+    double slope1 = (y_curr - y_prev) / dx1;
+    double slope2 = (y_next - y_curr) / dx2;
 
     if (slope1 <= 0 && slope2 >= 0) {
       minima.push_back({ x_curr, y_curr });
@@ -537,9 +545,6 @@ void loop() {
       findLocalMaxima(plotDataFor, maxima);
       findLocalMinima(plotDataBac, minima);
       
-      std::pair<double, double> globalMax = findGlobalMaximum(maxima);
-      std::pair<double, double> globalMin = findGlobalMinimum(minima);
-      
       // Send results
       String analyteName;
       if (cycle == 1) {
@@ -552,9 +557,13 @@ void loop() {
         analyteName = "Unknown";
       }
       
-      float conc = (globalMax.second - C)/M;
-
-      sendVoltametryOverSocket(conc, globalMax.second, analyteName);
+      if (!maxima.empty()) {
+        std::pair<double, double> globalMax = findGlobalMaximum(maxima);
+        float conc = (globalMax.second - C)/M;
+        sendVoltammetryOverSocket(conc, globalMax.second, analyteName);
+      } else {
+        Serial.println("Warning: No peaks found for " + analyteName);
+      }
       
       // Show results
       tft.fillScreen(TFT_BLACK);

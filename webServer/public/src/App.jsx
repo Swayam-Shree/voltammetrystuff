@@ -20,7 +20,7 @@ export default function App() {
     return (
         <div className="p-6 space-y-6">
             <h1 className="text-3xl font-bold">Renal Health Monitor</h1>
-            
+
             {/* Current Results Card */}
             <Card>
                 <CardHeader>
@@ -39,9 +39,9 @@ export default function App() {
                     ) : completedBatch ? (
                         <div className="space-y-4">
                             <div className="text-sm text-muted-foreground mb-4">
-                                Batch completed at {formatTimestamp(Date.now())}
+                                Batch completed at {formatTimestamp(completedBatch.completedAt)}
                             </div>
-                            {completedBatch.map((result, index) => (
+                            {completedBatch.results.map((result, index) => (
                                 <div key={index} className="border rounded-lg p-4 space-y-2">
                                     <div className="flex justify-between items-start">
                                         <div className="space-y-2">

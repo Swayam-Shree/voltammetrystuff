@@ -1,44 +1,52 @@
-import React, { createContext, useState, useContext, useEffect } from 'react'
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { ThemeProvider } from './components/custom/ThemeProvider.jsx'
 import './index.css'
 
-export const socket = new WebSocket('wss://renalhealthmonitor.onrender.com');
+function getWebSocketUrl() {
+	const loc = window.location;
+	if (loc.hostname === 'localhost' || loc.hostname === '127.0.0.1') {
+		return `ws://${loc.hostname}:${loc.port || 6969}`;
+	}
+	return `wss://${loc.host}`;
+}
+
+export const socket = new WebSocket(getWebSocketUrl());
 
 export const VoltammetryContext = createContext();
 
 function VoltammetryProvider({ children }) {
 	const [currentBatch, setCurrentBatch] = useState([]);
 	const [completedBatch, setCompletedBatch] = useState(null);
-	const [isLoading, setIsLoading] = useState(true);
+	const [isLoading, setIsLoading] = useState(false);
 
-	function updateVoltammetryResult(result) {
+	const updateVoltammetryResult = useCallback((result) => {
 		setCurrentBatch(prevBatch => {
 			const newBatch = [...prevBatch, result];
-			
+
 			// If we have 3 results, complete the batch
 			if (newBatch.length === 3) {
-				setCompletedBatch(newBatch);
+				setCompletedBatch({ results: newBatch, completedAt: Date.now() });
 				setIsLoading(false);
 				return []; // Reset for next batch
 			}
-			
+
 			// If this is the first result of a new batch, set loading to true
 			if (newBatch.length === 1) {
 				setIsLoading(true);
 			}
-			
+
 			return newBatch;
 		});
-	}
+	}, []);
 
 	return (
-		<VoltammetryContext.Provider value={{ 
+		<VoltammetryContext.Provider value={{
 			currentBatch,
 			completedBatch,
 			isLoading,
-			updateVoltammetryResult 
+			updateVoltammetryResult
 		}}>
 			{children}
 		</VoltammetryContext.Provider>
@@ -58,9 +66,15 @@ function SocketHandler() {
 	const { updateVoltammetryResult } = useContext(VoltammetryContext);
 
 	useEffect(() => {
-		async function handleMessage(event) {
-			let message = JSON.parse(event.data);
-			
+		function handleMessage(event) {
+			let message;
+			try {
+				message = JSON.parse(event.data);
+			} catch (e) {
+				console.error('Failed to parse message:', e.message);
+				return;
+			}
+
 			switch (message.type) {
 				case "voltammetryResult":
 					updateVoltammetryResult(message);
@@ -70,7 +84,7 @@ function SocketHandler() {
 					break;
 			}
 		}
-		
+
 		socket.addEventListener('message', handleMessage);
 
 		return () => {
