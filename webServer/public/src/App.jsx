@@ -9,8 +9,10 @@ import {
     CardTitle,
 } from "./components/ui/card"
 import { Badge } from "./components/ui/badge"
-import { Moon, Sun } from "lucide-react"
+import { Moon, Sun, LogOut } from "lucide-react"
 import { useTheme } from "./components/custom/ThemeProvider"
+import { useAuth } from "./components/custom/AuthProvider"
+import Login from "./components/custom/Login"
 
 function SimpleThemeToggle() {
     const { setTheme, theme } = useTheme()
@@ -23,6 +25,26 @@ function SimpleThemeToggle() {
         >
             {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
         </button>
+    )
+}
+
+function UserMenu() {
+    const { user, signOut } = useAuth()
+
+    return (
+        <div className="flex items-center gap-2">
+            <div className="text-sm text-muted-foreground hidden sm:block">
+                {user?.displayName || user?.email}
+            </div>
+            <button
+                onClick={signOut}
+                className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-10 w-10 cursor-pointer"
+                title="Sign out"
+            >
+                <LogOut size={20} />
+            </button>
+            <SimpleThemeToggle />
+        </div>
     )
 }
 
@@ -89,7 +111,7 @@ function DeviceList({ devices, onSelectDevice }) {
                     <h1 className="text-3xl font-bold tracking-tight">Renal Health Monitor</h1>
                     <p className="text-muted-foreground">Select a device to view its readings</p>
                 </div>
-                <SimpleThemeToggle />
+                <UserMenu />
             </div>
 
             {devices.length === 0 ? (
@@ -189,7 +211,7 @@ function DeviceDetail({ deviceId, onBack }) {
                         </p>
                     )}
                 </div>
-                <SimpleThemeToggle />
+                <UserMenu />
             </div>
 
             {/* Latest Results */}
@@ -238,6 +260,7 @@ function DeviceDetail({ deviceId, onBack }) {
 }
 
 export default function App() {
+    const { user, loading } = useAuth()
     const [devices, setDevices] = useState([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
@@ -249,6 +272,23 @@ export default function App() {
         });
         return unsubscribe;
     }, []);
+
+    // Show loading spinner while checking auth
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center space-y-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                    <p className="text-muted-foreground">Loading...</p>
+                </div>
+            </div>
+        )
+    }
+
+    // Show login if not authenticated
+    if (!user) {
+        return <Login />
+    }
 
     if (selectedDeviceId) {
         return (
