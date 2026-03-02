@@ -663,6 +663,7 @@ void loop() {
         tft.print("measurement");
   
         completionTime = millis();
+        sendMessageOverSocket("processingState", "COMPLETED");
       }
     }
   }
@@ -672,6 +673,7 @@ void loop() {
     if (millis() - completionTime > 3000) {
       currentState = IDLE;
       displayIdleScreen();
+      sendMessageOverSocket("processingState", "IDLE");
     }
   }
 }
