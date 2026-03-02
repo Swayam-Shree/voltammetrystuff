@@ -106,8 +106,7 @@ function getValueColor(value, min, max) {
 }
 
 function ReadingCard({ reading, isLatest }) {
-    const concColor = getValueColor(reading.concentration, 15, 40);
-    const peakColor = getValueColor(reading.peakCurrent, 50, 70);
+    const valueColor = getValueColor(reading.concentration, 15, 40);
 
     return (
         <div className={`border rounded-lg p-4 space-y-2 transition-all ${isLatest ? 'border-primary/50 bg-primary/5 shadow-sm' : ''}`}>
@@ -126,18 +125,18 @@ function ReadingCard({ reading, isLatest }) {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
+                            <p className="text-sm font-medium text-muted-foreground">Peak Current</p>
+                            <p className="text-xl font-bold" style={{ color: valueColor }}>{reading.peakCurrent?.toFixed(3)} µA</p>
+                        </div>
+                        <div>
                             <p className="text-sm font-medium text-muted-foreground">Concentration</p>
                             {
                                 reading.analyte === "Urea" ? (
-                                    <p className="text-xl font-bold" style={{ color: concColor }}>{reading.concentration?.toFixed(3)} mM</p>
+                                    <p className="text-xl font-bold" style={{ color: valueColor }}>{reading.concentration?.toFixed(3)} mM</p>
                                 ) : (
-                                    <p className="text-xl font-bold" style={{ color: concColor }}>{reading.concentration?.toFixed(3)} µM</p>
+                                    <p className="text-xl font-bold" style={{ color: valueColor }}>{reading.concentration?.toFixed(3)} µM</p>
                                 )
                             }
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground">Peak Current</p>
-                            <p className="text-xl font-bold" style={{ color: peakColor }}>{reading.peakCurrent?.toFixed(3)} µA</p>
                         </div>
                     </div>
                 </div>
