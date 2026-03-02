@@ -94,7 +94,21 @@ function StatusBadge({ status }) {
     )
 }
 
+// Blue (low) → Red (high) gradient via HSL hue interpolation
+function getValueColor(value, min, max) {
+    const clamped = Math.max(min, Math.min(max, value ?? min));
+    const t = (clamped - min) / (max - min); // 0 → 1
+    // Hue: 220 (blue) → 0 (red)
+    const hue = 220 * (1 - t);
+    const saturation = 75 + 10 * Math.sin(t * Math.PI); // slight boost in middle
+    const lightness = 50;
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+}
+
 function ReadingCard({ reading, isLatest }) {
+    const concColor = getValueColor(reading.concentration, 15, 40);
+    const peakColor = getValueColor(reading.peakCurrent, 50, 70);
+
     return (
         <div className={`border rounded-lg p-4 space-y-2 transition-all ${isLatest ? 'border-primary/50 bg-primary/5 shadow-sm' : ''}`}>
             <div className="flex justify-between items-start">
@@ -115,15 +129,15 @@ function ReadingCard({ reading, isLatest }) {
                             <p className="text-sm font-medium text-muted-foreground">Concentration</p>
                             {
                                 reading.analyte === "Urea" ? (
-                                    <p className="text-xl font-bold">{reading.concentration?.toFixed(3)} mM</p>
+                                    <p className="text-xl font-bold" style={{ color: concColor }}>{reading.concentration?.toFixed(3)} mM</p>
                                 ) : (
-                                    <p className="text-xl font-bold">{reading.concentration?.toFixed(3)} µM</p>
+                                    <p className="text-xl font-bold" style={{ color: concColor }}>{reading.concentration?.toFixed(3)} µM</p>
                                 )
                             }
                         </div>
                         <div>
                             <p className="text-sm font-medium text-muted-foreground">Peak Current</p>
-                            <p className="text-xl font-bold">{reading.peakCurrent?.toFixed(3)} µA</p>
+                            <p className="text-xl font-bold" style={{ color: peakColor }}>{reading.peakCurrent?.toFixed(3)} µA</p>
                         </div>
                     </div>
                 </div>
