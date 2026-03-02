@@ -5,11 +5,19 @@ const path = require('path');
 const cors = require('cors');
 const admin = require('firebase-admin');
 
-// Initialize Firebase Admin with the project config
-admin.initializeApp({
+// Initialize Firebase Admin with service account credentials
+const firebaseConfig = {
     projectId: 'othlanding',
     databaseURL: 'https://othlanding-default-rtdb.firebaseio.com',
-});
+};
+
+// Load credentials from env var (set on Render with the service account JSON)
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+    firebaseConfig.credential = admin.credential.cert(serviceAccount);
+}
+
+admin.initializeApp(firebaseConfig);
 
 const db = admin.firestore();
 
