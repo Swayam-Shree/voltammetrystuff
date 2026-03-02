@@ -21,7 +21,7 @@ const char* password = "87655678";
 // Unique device identifier — generated from MAC address
 String DEVICE_ID = "ESP32_UNKNOWN";
 
-const char* websocket_host = "renalmonitor.onrender.com";
+const char* websocket_host = "renalhealthmonitor.onrender.com";
 const uint16_t websocket_port = 443;
 
 WebSocketsClient webSocket;
