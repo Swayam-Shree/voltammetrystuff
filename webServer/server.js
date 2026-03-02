@@ -3,6 +3,15 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const cors = require('cors');
+const admin = require('firebase-admin');
+
+// Initialize Firebase Admin with the project config
+admin.initializeApp({
+    projectId: 'othlanding',
+    databaseURL: 'https://othlanding-default-rtdb.firebaseio.com',
+});
+
+const db = admin.firestore();
 
 const app = express();
 
@@ -12,9 +21,6 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 6969;
-
-let espSocket = null;
-let browserSocket = null;
 
 let idCounter = 0;
 
@@ -34,34 +40,54 @@ wss.on('connection', (socket) => {
 
         if (!parsed) return;
 
+        const deviceId = parsed.deviceId;
+
         switch (parsed.type) {
             case "init":
-                switch (parsed.data) {
-                    case "espInit":
-                        if (espSocket && espSocket !== socket) {
-                            console.warn("Replacing existing ESP connection");
-                        }
-                        espSocket = socket;
-                        console.log("ESP connected");
-                        break;
-                    case "browserInit":
-                        if (browserSocket && browserSocket !== socket) {
-                            console.warn("Replacing existing browser connection");
-                        }
-                        browserSocket = socket;
-                        console.log("Browser connected");
-                        break;
+                if (parsed.data === "espInit" && deviceId) {
+                    console.log(`ESP device "${deviceId}" connected`);
+                    // Register / update device in Firestore
+                    db.collection('devices').doc(deviceId).set({
+                        deviceId: deviceId,
+                        status: 'IDLE',
+                        lastSeen: admin.firestore.FieldValue.serverTimestamp(),
+                    }, { merge: true }).catch(err => {
+                        console.error('Firestore write error (init):', err.message);
+                    });
                 }
                 break;
 
             case "voltammetryResult":
-                if (browserSocket) {
-                    browserSocket.send(JSON.stringify(parsed));
+                if (deviceId) {
+                    console.log(`Result from "${deviceId}":`, parsed.analyte, parsed.concentration);
+                    // Write reading to subcollection
+                    const deviceRef = db.collection('devices').doc(deviceId);
+                    deviceRef.collection('readings').add({
+                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                        analyte: parsed.analyte,
+                        concentration: parsed.concentration,
+                        peakCurrent: parsed.peakCurrent,
+                    }).catch(err => {
+                        console.error('Firestore write error (reading):', err.message);
+                    });
+                    // Update lastSeen
+                    deviceRef.set({
+                        lastSeen: admin.firestore.FieldValue.serverTimestamp(),
+                    }, { merge: true }).catch(err => {
+                        console.error('Firestore write error (lastSeen):', err.message);
+                    });
                 }
                 break;
+
             case "processingState":
-                if (browserSocket) {
-                    browserSocket.send(JSON.stringify(parsed));
+                if (deviceId) {
+                    console.log(`State from "${deviceId}":`, parsed.data);
+                    db.collection('devices').doc(deviceId).set({
+                        status: parsed.data,
+                        lastSeen: admin.firestore.FieldValue.serverTimestamp(),
+                    }, { merge: true }).catch(err => {
+                        console.error('Firestore write error (state):', err.message);
+                    });
                 }
                 break;
         }
@@ -69,14 +95,6 @@ wss.on('connection', (socket) => {
 
     socket.on('close', () => {
         console.log('Client disconnected', socket.id);
-        if (socket === espSocket) {
-            espSocket = null;
-            console.log("ESP disconnected, reference cleared");
-        }
-        if (socket === browserSocket) {
-            browserSocket = null;
-            console.log("Browser disconnected, reference cleared");
-        }
     });
 });
 

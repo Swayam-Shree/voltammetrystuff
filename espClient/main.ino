@@ -18,7 +18,10 @@
 const char* ssid = "swayam";
 const char* password = "87655678";
 
-const char* websocket_host = "renalhealthmonitor.onrender.com";
+// Unique device identifier — generated from MAC address
+String DEVICE_ID = "ESP32_UNKNOWN";
+
+const char* websocket_host = "renalmonitor.onrender.com";
 const uint16_t websocket_port = 443;
 
 WebSocketsClient webSocket;
@@ -44,6 +47,7 @@ String serializeVoltammetryResults(double concentration, double peakCurrent, con
     voltammetryDoc.clear();
     
     voltammetryDoc["type"] = "voltammetryResult";
+    voltammetryDoc["deviceId"] = DEVICE_ID;
     voltammetryDoc["analyte"] = analyteName;
     voltammetryDoc["concentration"] = concentration;
     voltammetryDoc["peakCurrent"] = peakCurrent;
@@ -57,6 +61,7 @@ String serializeMessage(const String& type, const String& message) {
     messageDoc.clear();
     
     messageDoc["type"] = type;
+    messageDoc["deviceId"] = DEVICE_ID;
     messageDoc["data"] = message;
     
     String output;
@@ -210,6 +215,13 @@ void setup() {
   tft.print("Linear Sweep Voltammetry");
 
   Serial.begin(115200);
+
+  // Generate unique device ID from MAC address
+  String mac = WiFi.macAddress();
+  mac.replace(":", "");
+  DEVICE_ID = "ESP32_" + mac;
+  Serial.println("Device ID: " + DEVICE_ID);
+
   Wire.setClock(400000);
   ads.begin();
   ads.setDataRate(RATE_ADS1115_860SPS);
