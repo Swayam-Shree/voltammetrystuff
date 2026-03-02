@@ -164,13 +164,26 @@ uint16_t Vals_color = TFT_RED;
 uint16_t Points_color = TFT_CYAN;
 uint16_t Axes_color = TFT_WHITE;
 
-#define X_MIN -1.2
-#define X_MAX 1.2
-#define Y_MIN -60
-#define Y_MAX 60
+// Graph axis ranges — mutable for auto-scaling
+float graphXMin = -1.2;
+float graphXMax = 1.2;
+float graphYMin = -60;
+float graphYMax = 60;
+
+// Initial default ranges (used to reset before each cycle)
+const float DEFAULT_X_MIN = -1.2;
+const float DEFAULT_X_MAX = 1.2;
+const float DEFAULT_Y_MIN = -60;
+const float DEFAULT_Y_MAX = 60;
 
 #define X_DIVISIONS 5
 #define Y_DIVISIONS 5
+
+// Graph drawing area with margins
+#define GRAPH_LEFT   35
+#define GRAPH_RIGHT  (GRAPH_WIDTH - 5)
+#define GRAPH_TOP    5
+#define GRAPH_BOTTOM (GRAPH_HEIGHT - 30)
 
 std::vector<std::pair<double, double>> plotDataFor;
 std::vector<std::pair<double, double>> plotDataBac;
@@ -204,15 +217,22 @@ const unsigned long debounceDelay = 500;
 // Timer for COMPLETED state
 unsigned long completionTime = 0;
 
+// Store concentration results for each cycle to show on completion screen
+float cycleConcentrations[CYCLE_CNT] = {0};
+const char* cycleAnalyteNames[CYCLE_CNT] = {"Urea", "Uric Acid", "Creatinine"};
+
 void setup() {
   tft.init();
   tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
 
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setTextSize(3);
-  tft.setCursor(15, 15);
-  tft.print("Linear Sweep Voltammetry");
+  tft.setTextSize(2);
+  tft.setCursor(15, 30);
+  tft.print("Renal Health Monitor");
+  tft.setTextSize(1);
+  tft.setCursor(15, 55);
+  tft.print("Initializing...");
 
   Serial.begin(115200);
 
@@ -272,10 +292,12 @@ void displayIdleScreen() {
   tft.fillScreen(TFT_BLACK);
   tft.setTextSize(2);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setCursor(50, 100);
-  tft.print("Press START to begin");
-  tft.setCursor(50, 130);
-  tft.print("LSV measurement");
+  tft.setCursor(20, 80);
+  tft.print("Renal Health Monitor");
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_CYAN, TFT_BLACK);
+  tft.setCursor(20, 110);
+  tft.print("Press START to begin measurement");
 }
 
 void generateOutput(int forw) {
@@ -338,57 +360,73 @@ float X_AXIS_Y;
 float Y_AXIS_X;
 
 void drawGraphAxes() {
-  X_AXIS_Y = map(0, Y_MIN, Y_MAX, GRAPH_HEIGHT - 10, 10);
-  Y_AXIS_X = map(0, X_MIN, X_MAX, 10, GRAPH_WIDTH - 10);
+  float plotW = GRAPH_RIGHT - GRAPH_LEFT;
+  float plotH = GRAPH_BOTTOM - GRAPH_TOP;
 
-  tft.drawLine(10, X_AXIS_Y, GRAPH_WIDTH - 10, X_AXIS_Y, Axes_color);
-  tft.drawLine(Y_AXIS_X, 10, Y_AXIS_X, GRAPH_HEIGHT - 10, Axes_color);
+  // Compute pixel positions for the zero axes
+  X_AXIS_Y = GRAPH_BOTTOM - ((0 - graphYMin) / (graphYMax - graphYMin)) * plotH;
+  Y_AXIS_X = GRAPH_LEFT + ((0 - graphXMin) / (graphXMax - graphXMin)) * plotW;
+
+  // Clamp axis lines to graph area
+  X_AXIS_Y = constrain(X_AXIS_Y, GRAPH_TOP, GRAPH_BOTTOM);
+  Y_AXIS_X = constrain(Y_AXIS_X, GRAPH_LEFT, GRAPH_RIGHT);
+
+  tft.drawLine(GRAPH_LEFT, X_AXIS_Y, GRAPH_RIGHT, X_AXIS_Y, Axes_color);
+  tft.drawLine(Y_AXIS_X, GRAPH_TOP, Y_AXIS_X, GRAPH_BOTTOM, Axes_color);
   tft.setTextColor(Scales_color, TFT_BLACK);
   tft.setTextSize(1);
 
   for (int i = 0; i <= X_DIVISIONS; i++) {
-    float xValue = X_MIN + (i * (X_MAX - X_MIN) / X_DIVISIONS);
-    int xPixel = 10 + (i * (GRAPH_WIDTH - 20) / X_DIVISIONS);
+    float xValue = graphXMin + (i * (graphXMax - graphXMin) / X_DIVISIONS);
+    int xPixel = GRAPH_LEFT + (i * plotW / X_DIVISIONS);
 
-    tft.drawLine(xPixel, X_AXIS_Y - 5, xPixel, X_AXIS_Y + 5, Scales_color);
+    tft.drawLine(xPixel, X_AXIS_Y - 3, xPixel, X_AXIS_Y + 3, Scales_color);
 
     char label[10];
-    sprintf(label, "%.1f V", xValue);
-    tft.setCursor(xPixel - 10, X_AXIS_Y + 10);
+    sprintf(label, "%.1f", xValue);
+    tft.setCursor(xPixel - 8, GRAPH_BOTTOM + 4);
     tft.print(label);
   }
 
   for (int i = 0; i <= Y_DIVISIONS; i++) {
-    float yValue = Y_MIN + (i * (Y_MAX - Y_MIN) / Y_DIVISIONS);
-    int yPixel = GRAPH_HEIGHT - 10 - (i * (GRAPH_HEIGHT - 20) / Y_DIVISIONS);
+    float yValue = graphYMin + (i * (graphYMax - graphYMin) / Y_DIVISIONS);
+    int yPixel = GRAPH_BOTTOM - (i * plotH / Y_DIVISIONS);
 
-    tft.drawLine(Y_AXIS_X - 5, yPixel, Y_AXIS_X + 5, yPixel, TFT_WHITE);
+    tft.drawLine(Y_AXIS_X - 3, yPixel, Y_AXIS_X + 3, yPixel, TFT_WHITE);
 
     char label[10];
-    sprintf(label, "%.1f uA", yValue);
-    tft.setCursor(Y_AXIS_X - 25, yPixel - 5);
+    sprintf(label, "%.0f", yValue);
+    tft.setCursor(2, yPixel - 4);
     tft.print(label);
   }
 }
 
 void plotPoint(float x, float y, uint16_t color) {
-  float screenX = 10 + ((x - X_MIN) * (300) / (X_MAX - X_MIN));
-  float screenY = 230 - ((y - Y_MIN) * (220) / (Y_MAX - Y_MIN));
-  tft.fillCircle(screenX, screenY, 2, color);
+  float plotW = GRAPH_RIGHT - GRAPH_LEFT;
+  float plotH = GRAPH_BOTTOM - GRAPH_TOP;
+
+  float screenX = GRAPH_LEFT + ((x - graphXMin) * plotW / (graphXMax - graphXMin));
+  float screenY = GRAPH_BOTTOM - ((y - graphYMin) * plotH / (graphYMax - graphYMin));
+
+  // Clamp to graph area so points never draw outside the axes
+  screenX = constrain(screenX, GRAPH_LEFT, GRAPH_RIGHT);
+  screenY = constrain(screenY, GRAPH_TOP, GRAPH_BOTTOM);
+
+  tft.fillCircle((int)screenX, (int)screenY, 2, color);
 }
 
 void displayVals(float x, float y) {
-  tft.setTextSize(2);
+  tft.setTextSize(1);
 
   int16_t width = tft.textWidth(String(prevNumber));
-  tft.fillRect(20, 210, width, tft.fontHeight(), TFT_BLACK);
+  tft.fillRect(GRAPH_LEFT, GRAPH_BOTTOM + 14, GRAPH_RIGHT - GRAPH_LEFT, tft.fontHeight(), TFT_BLACK);
 
   tft.setTextColor(Vals_color, TFT_BLACK);
-  tft.setCursor(20, 210);
-  tft.print(String(x, 1) + " V," + String(y, 1) + " uA, CYCLE =" + String(cycle));
+  tft.setCursor(GRAPH_LEFT, GRAPH_BOTTOM + 14);
+  String info = String(x, 2) + "V  " + String(y, 1) + "uA  E" + String(cycle);
+  tft.print(info);
 
-  prevNumber = String(x, 1) + " V," + String(y, 1) + " uA, CYCLE =" + String(cycle);
-  tft.setTextSize(2);
+  prevNumber = info;
 }
 
 void findLocalMaxima(const std::vector<std::pair<double, double>>& coordinates, std::vector<std::pair<double, double>>& maxima) {
@@ -503,16 +541,22 @@ void handleButtons() {
         measurementStarted = true;
         stopRequested = false;
         cycle = 1;
+        // Reset stored concentrations
+        for (int c = 0; c < CYCLE_CNT; c++) cycleConcentrations[c] = 0;
         
         digitalWrite(READY_LED, LOW);
         digitalWrite(PROCESSING_LED, HIGH);
         
         // Initialize display
         tft.fillScreen(TFT_BLACK);
-        tft.setTextSize(3);
+        tft.setTextSize(2);
         tft.setTextColor(TFT_CYAN, TFT_BLACK);
         tft.setCursor(5, 50);
-        tft.print("LSV electrode " + String(cycle));
+        tft.print("Electrode " + String(cycle) + ": " + String(cycleAnalyteNames[cycle - 1]));
+        
+        // Reset graph ranges for new measurement
+        graphXMin = DEFAULT_X_MIN; graphXMax = DEFAULT_X_MAX;
+        graphYMin = DEFAULT_Y_MIN; graphYMax = DEFAULT_Y_MAX;
         
         // Prepare for measurement
         tft.setTextSize(2);
@@ -536,6 +580,7 @@ void handleButtons() {
         // Clear data
         plotDataFor.clear();
         plotDataBac.clear();
+        for (int c = 0; c < CYCLE_CNT; c++) cycleConcentrations[c] = 0;
         
         // Show idle screen
         displayIdleScreen();
@@ -604,21 +649,19 @@ void loop() {
         std::pair<double, double> globalMax = findGlobalMaximum(maxima);
         // Calculate concentration using analyte-specific calibration
         float conc = calculateConcentration(globalMax.second, cycle);
+        cycleConcentrations[cycle - 1] = conc;
         sendVoltammetryOverSocket(conc, globalMax.second, analyteName);
       
-        // Show results
+        // Show per-cycle results briefly
         tft.fillScreen(TFT_BLACK);
         tft.setTextSize(2);
         tft.setTextColor(TFT_GREEN, TFT_BLACK);
-        tft.setCursor(5, 50);
-        tft.print("LSV Completed, electrode =" + String(cycle));
-      
-        tft.fillScreen(TFT_BLACK);
-        tft.setCursor(5, 50);
-        tft.print(" Max Current : ");
-        tft.print(globalMax.second);
-        tft.print(" at ");
-        tft.print(globalMax.first);
+        tft.setCursor(5, 40);
+        tft.print(analyteName + " done");
+        tft.setCursor(5, 70);
+        tft.print("Peak: " + String(globalMax.second, 2) + " uA");
+        tft.setCursor(5, 100);
+        tft.print("Conc: " + String(conc, 2));
       } else {
         Serial.println("Warning: No peaks found for " + analyteName);
       }
@@ -634,10 +677,14 @@ void loop() {
         switchElectrode(cycle);
         
         tft.fillScreen(TFT_BLACK);
-        tft.setTextSize(3);
+        tft.setTextSize(2);
         tft.setTextColor(TFT_CYAN, TFT_BLACK);
         tft.setCursor(5, 50);
-        tft.print("LSV electrode " + String(cycle));
+        tft.print("Electrode " + String(cycle) + ": " + String(cycleAnalyteNames[cycle - 1]));
+        
+        // Reset graph ranges for next cycle
+        graphXMin = DEFAULT_X_MIN; graphXMax = DEFAULT_X_MAX;
+        graphYMin = DEFAULT_Y_MIN; graphYMax = DEFAULT_Y_MAX;
         
         tft.setTextSize(2);
         tft.fillScreen(TFT_BLACK);
@@ -649,18 +696,34 @@ void loop() {
         digitalWrite(READY_LED, HIGH);
         digitalWrite(PROCESSING_LED, LOW);
         
-        // Show completion screen
+        // Show completion screen with concentrations
         tft.fillScreen(TFT_BLACK);
         tft.setTextSize(2);
         tft.setTextColor(TFT_GREEN, TFT_BLACK);
-        tft.setCursor(30, 100);
-        tft.print("All measurements");
-        tft.setCursor(30, 130);
-        tft.print("completed!");
-        tft.setCursor(30, 160);
-        tft.print("Press START for new");
-        tft.setCursor(30, 190);
-        tft.print("measurement");
+        tft.setCursor(20, 10);
+        tft.print("Test Complete!");
+        
+        tft.setTextColor(TFT_WHITE, TFT_BLACK);
+        int yPos = 45;
+        for (int c = 0; c < CYCLE_CNT; c++) {
+          tft.setTextColor(TFT_CYAN, TFT_BLACK);
+          tft.setCursor(10, yPos);
+          tft.print(String(cycleAnalyteNames[c]) + ":");
+          tft.setTextColor(TFT_WHITE, TFT_BLACK);
+          tft.setCursor(160, yPos);
+          if (cycleConcentrations[c] != 0) {
+            tft.print(String(cycleConcentrations[c], 3));
+            tft.print(c == 0 ? " mM" : " uM");
+          } else {
+            tft.print("N/A");
+          }
+          yPos += 30;
+        }
+        
+        tft.setTextSize(1);
+        tft.setTextColor(TFT_GREEN, TFT_BLACK);
+        tft.setCursor(20, yPos + 20);
+        tft.print("Auto-reset in 10s...");
   
         completionTime = millis();
         sendMessageOverSocket("processingState", "COMPLETED");
@@ -670,7 +733,7 @@ void loop() {
 
   if (currentState == COMPLETED) {
     // Check if 3 seconds (3000 ms) have passed
-    if (millis() - completionTime > 3000) {
+    if (millis() - completionTime > 10000) {
       currentState = IDLE;
       displayIdleScreen();
       sendMessageOverSocket("processingState", "IDLE");
