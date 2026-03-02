@@ -13,6 +13,8 @@ import { Moon, Sun, LogOut } from "lucide-react"
 import { useTheme } from "./components/custom/ThemeProvider"
 import { useAuth } from "./components/custom/AuthProvider"
 import Login from "./components/custom/Login"
+import logo1 from '../logo1.png'
+import logo2 from '../logo2.png'
 
 function SimpleThemeToggle() {
     const { setTheme, theme } = useTheme()
@@ -25,6 +27,33 @@ function SimpleThemeToggle() {
         >
             {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
         </button>
+    )
+}
+
+function LogoHeader() {
+    return (
+        <div className="w-full border-b border-border bg-card/80 backdrop-blur-sm">
+            <div className="max-w-4xl mx-auto flex items-center justify-between px-6 py-3">
+                <img
+                    src={logo1}
+                    alt="BITS Pilani"
+                    className="h-14 w-auto object-contain"
+                />
+                <div className="text-center">
+                    <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+                        Renal Health Monitor
+                    </h1>
+                    <p className="text-xs text-muted-foreground hidden sm:block">
+                        Voltammetry-Based Kidney Function Analysis
+                    </p>
+                </div>
+                <img
+                    src={logo2}
+                    alt="MEMS, Microfluidics & Nanoelectronics Lab"
+                    className="h-14 w-auto object-contain"
+                />
+            </div>
+        </div>
     )
 }
 
@@ -108,7 +137,7 @@ function DeviceList({ devices, onSelectDevice }) {
         <div className="p-6 max-w-4xl mx-auto space-y-6">
             <div className="flex items-start justify-between">
                 <div className="space-y-2">
-                    <h1 className="text-3xl font-bold tracking-tight">Renal Health Monitor</h1>
+                    <h2 className="text-2xl font-bold tracking-tight">Connected Devices</h2>
                     <p className="text-muted-foreground">Select a device to view its readings</p>
                 </div>
                 <UserMenu />
@@ -287,22 +316,33 @@ export default function App() {
 
     // Show login if not authenticated
     if (!user) {
-        return <Login />
+        return (
+            <>
+                <LogoHeader />
+                <Login />
+            </>
+        )
     }
 
     if (selectedDeviceId) {
         return (
-            <DeviceDetail
-                deviceId={selectedDeviceId}
-                onBack={() => setSelectedDeviceId(null)}
-            />
+            <>
+                <LogoHeader />
+                <DeviceDetail
+                    deviceId={selectedDeviceId}
+                    onBack={() => setSelectedDeviceId(null)}
+                />
+            </>
         );
     }
 
     return (
-        <DeviceList
-            devices={devices}
-            onSelectDevice={setSelectedDeviceId}
-        />
+        <>
+            <LogoHeader />
+            <DeviceList
+                devices={devices}
+                onSelectDevice={setSelectedDeviceId}
+            />
+        </>
     );
 }
