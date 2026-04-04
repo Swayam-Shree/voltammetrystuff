@@ -32,6 +32,14 @@ const PORT = process.env.PORT || 6969;
 
 let idCounter = 0;
 
+let v = 10;
+
+
+
+
+
+
+
 wss.on('connection', (socket) => {
     socket.id = idCounter;
     ++idCounter;
